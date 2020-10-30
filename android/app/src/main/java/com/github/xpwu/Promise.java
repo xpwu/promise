@@ -64,7 +64,7 @@ public class Promise<Value> {
 
     return new Promise<>((resolve, reject) -> {
       // 异步执行
-      this.resolve_ = value -> new Handler().post(()->{
+      this.resolves_.add(value -> new Handler().post(()->{
         Promise<Next> retValue;
         try {
           // 这里返回的可能是 fulfilled or rejected 的promise
@@ -74,14 +74,14 @@ public class Promise<Value> {
           retValue = Promise.reject(new Error(e));
         }
 
-        retValue.resolve_ = resolve::run;
-        retValue.reject_ = reject::run;
+        retValue.resolves_.add(resolve::run);
+        retValue.rejects_.add(reject::run);
 
         retValue.nextCall_.run();
-      });
+      }));
 
       // 直接向下一级传递错误
-      this.reject_ = reject::run;
+      this.rejects_.add(reject::run);
 
       this.nextCall_.run();
     });
@@ -127,7 +127,7 @@ public class Promise<Value> {
 
     return new Promise<>((resolve, reject) -> {
       // 异步执行
-      this.reject_ = error -> new Handler().post(()->{
+      this.rejects_.add(error -> new Handler().post(()->{
         Promise<Value> retValue;
         try {
           // 这里返回的可能是 fulfilled or rejected 的promise
@@ -137,14 +137,14 @@ public class Promise<Value> {
           retValue = Promise.reject(new Error(e));
         }
 
-        retValue.resolve_ = resolve::run;
-        retValue.reject_ = reject::run;
+        retValue.resolves_.add(resolve::run);
+        retValue.rejects_.add(reject::run);
 
         retValue.nextCall_.run();
-      });
+      }));
 
       // 直接向下一级传递值
-      this.resolve_ = resolve::run;
+      this.resolves_.add(resolve::run);
 
       this.nextCall_.run();
     });
@@ -154,7 +154,7 @@ public class Promise<Value> {
   public Promise<Value> fina(final Runnable task) {
 
     return new Promise<>((resolve, reject) -> {
-      this.resolve_ = value -> new Handler().post(()->{
+      this.resolves_.add(value -> new Handler().post(()->{
         try {
           task.run();
         }catch (Exception e) {
@@ -163,9 +163,9 @@ public class Promise<Value> {
         }
 
         resolve.run(value);
-      });
+      }));
 
-      this.reject_ = error -> new Handler().post(()->{
+      this.rejects_.add(error -> new Handler().post(()->{
         try {
           task.run();
         }catch (Exception e) {
@@ -174,7 +174,7 @@ public class Promise<Value> {
         }
 
         reject.run(error);
-      });
+      }));
 
       this.nextCall_.run();
     });
@@ -241,7 +241,13 @@ public class Promise<Value> {
     }
     pending = false;
 
-    this.nextCall_ = ()-> this.resolve_.accept(value);
+    this.nextCall_ = ()-> {
+      for (Consumer<Value> r: this.resolves_) {
+        r.accept(value);
+      }
+      this.resolves_.clear();
+    };
+
     this.nextCall_.run();
   }
 
@@ -251,12 +257,18 @@ public class Promise<Value> {
     }
     pending = false;
 
-    this.nextCall_ = ()-> this.reject_.accept(error);
+    this.nextCall_ = ()-> {
+      for (Consumer<Error> r: this.rejects_) {
+        r.accept(error);
+      }
+      this.rejects_.clear();
+    };
+
     this.nextCall_.run();
   }
 
-  private Consumer<Value> resolve_ = v -> { };
-  private Consumer<Error> reject_ = e -> { };
+  private Collection<Consumer<Value>> resolves_ = new ArrayList<>();
+  private Collection<Consumer<Error>> rejects_ = new ArrayList<>();
 
   private Runnable nextCall_ = ()->{};
   private boolean pending = true;
