@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es6",
+    "noImplicitReturns": true,
+    "strict": true,
+    "alwaysStrict": true,
+    "pretty": true,
+    "experimentalDecorators": true,
+    "moduleResolution": "node",
+    "noEmit": false,
+    "downlevelIteration": true,
+    "noImplicitThis": true,
+    "inlineSourceMap": true,
+    "inlineSources": true,
+    "outDir": "dist"
+  },
+  "include": [
+    "src",
+    "test"
+  ]
+}
