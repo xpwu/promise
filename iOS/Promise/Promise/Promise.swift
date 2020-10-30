@@ -41,7 +41,7 @@ public class Promise<Value> {
     return Promise<Next>{
       [unowned self]
       (resolve:@escaping (Next)->Void, reject:@escaping (Error)->Void)->Void in
-      self.resolve = {value in
+      self.resolves.append({value in
         Async().run {
           var retValue:Promise<Next>
           do {
@@ -51,14 +51,14 @@ public class Promise<Value> {
             retValue = Promise<Next>.reject(error)
           }
           
-          retValue.resolve = resolve
-          retValue.reject = reject
+          retValue.resolves.append(resolve)
+          retValue.rejects.append(reject)
           
           retValue.nextCall()
         }
-      }
+      })
       
-      self.reject = reject
+      self.rejects.append(reject)
       
       self.nextCall()
     }
@@ -105,7 +105,7 @@ public class Promise<Value> {
     return Promise<Value>(){
       [unowned self]
       (resolve:@escaping (Value)->Void, reject:@escaping (Error)->Void)->Void in
-      self.reject = {err in
+      self.rejects.append({err in
         Async().run {
           var retValue:Promise<Value>
           do {
@@ -115,14 +115,14 @@ public class Promise<Value> {
             retValue = Promise.reject(error)
           }
           
-          retValue.resolve = resolve
-          retValue.reject = reject
+          retValue.resolves.append(resolve)
+          retValue.rejects.append(reject)
           
           retValue.nextCall()
         }
-      }
+      })
       
-      self.resolve = resolve
+      self.resolves.append(resolve)
       
       self.nextCall()
     }
@@ -133,7 +133,7 @@ public class Promise<Value> {
     return Promise<Value>(){
       [unowned self]
       (resolve:@escaping (Value)->Void, reject:@escaping (Error)->Void)->Void in
-      self.reject = {err in
+      self.rejects.append({err in
         Async().run {
           do {
             try task()
@@ -143,9 +143,9 @@ public class Promise<Value> {
           
           reject(err)
         }
-      }
+      })
       
-      self.resolve = {value in
+      self.resolves.append({value in
         Async().run {
           do {
             try task()
@@ -155,7 +155,7 @@ public class Promise<Value> {
           
           resolve(value)
         }
-      }
+      })
       
       self.nextCall()
     }
@@ -216,7 +216,13 @@ public class Promise<Value> {
     }
     self.pending = false
     
-    self.nextCall = {[unowned self] in self.resolve(value)}
+    self.nextCall = {[unowned self] in
+      for r in self.resolves {
+        r(value)
+      }
+      self.resolves = []
+    }
+    
     self.nextCall()
   }
   
@@ -226,12 +232,18 @@ public class Promise<Value> {
     }
     self.pending = false
     
-    self.nextCall = {[unowned self] in self.reject(err)}
+    self.nextCall = {[unowned self] in
+      for r in self.rejects {
+        r(err)
+      }
+      self.rejects = []
+    }
+    
     self.nextCall()
   }
   
-  private var resolve = {(_ v:Value)->Void in}
-  private var reject = {(_ err:Error)->Void in}
+  private var resolves:[(_ v:Value)->Void] = []
+  private var rejects:[(_ err:Error)->Void] = []
   
   private var nextCall = {()->Void in }
   private var pending = true;
