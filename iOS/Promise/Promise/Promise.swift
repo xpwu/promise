@@ -20,7 +20,7 @@ public class Promise<Value> {
     do {
       try task({self.doResolve($0)}, {self.doReject($0)})
     }catch {
-      self.doReject(error)
+      doReject(error)
     }
   }
   
@@ -39,7 +39,6 @@ public class Promise<Value> {
   @discardableResult
   public func then<Next> (_ task:@escaping (Value)throws->Promise<Next>)->Promise<Next> {
     return Promise<Next>{
-      [unowned self]
       (resolve:@escaping (Next)->Void, reject:@escaping (Error)->Void)->Void in
       self.resolves.append({value in
         Async().run {
@@ -103,7 +102,6 @@ public class Promise<Value> {
   @discardableResult
   public func `catch`(_ task:@escaping (Error)throws->Promise<Value>)->Promise<Value> {
     return Promise<Value>(){
-      [unowned self]
       (resolve:@escaping (Value)->Void, reject:@escaping (Error)->Void)->Void in
       self.rejects.append({err in
         Async().run {
@@ -131,7 +129,6 @@ public class Promise<Value> {
   @discardableResult
   public func finally (_ task:@escaping ()throws->Void)->Promise<Value> {
     return Promise<Value>(){
-      [unowned self]
       (resolve:@escaping (Value)->Void, reject:@escaping (Error)->Void)->Void in
       self.rejects.append({err in
         Async().run {
