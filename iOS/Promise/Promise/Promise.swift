@@ -8,6 +8,11 @@
 // NOTE THAT:  目前调用的情况  Promise<Value> 中的Value 必须能推断出来，为了调用的方便，
 // 所有静态方法中的泛型名 都是用 Value 名字
 
+// 在swift 5 之前的版本(2021-04-17)，nextcall 中的闭包的方式，在开启swift的编译优化时，会出现编译结果错误，
+// 在self.next() 执行中，会报告这个错误
+// “Attempted to read an unowned reference but object 0x600000dcec40 was already deallocated”
+// 所以增加v2的写法。
+
 import Foundation
 
 public class Promise<Value> {
@@ -158,14 +163,20 @@ public class Promise<Value> {
     }
   }
   
-  static public func race (_ promises: [Promise<Value>])->Promise<Value?> {
-    return Promise<Value?>{ (resolve, reject) in
+  static public func race (_ promises: [Promise<Value>])->Promise<Value> {
+    return Promise<Value>{ (resolve, reject) in
       // 在node.js 12.16.1 环境下测试，如果是空的话，将会被挂起，不执行后续逻辑，不太合理
       // 这里返回一个 nil 的值
-      if promises.isEmpty {
-        resolve(nil)
-        return;
-      }
+      
+      // v1
+//      if promises.isEmpty {
+//        resolve(nil)
+//        return;
+//      }
+      
+      // v2
+      // 2021-04-17 之前这里返回的是nil 给 返回类型Pormise<Value?>。不确定编译器在处理Optional<Value>? 时
+      // 的优化细节，所以 不返回nil。由于没有合适的值返回，这里暂时不处理输入为空数组的情况。
       
       for promise in promises {
         promise.value{
@@ -208,42 +219,90 @@ public class Promise<Value> {
   }
   
   private func doResolve(_ value:Value)->Void {
-    if !self.pending {
+    // v1
+//    if !self.pending {
+//      return
+//    }
+//    self.pending = false
+//
+//    self.nextCall = {[unowned self] in
+//      for r in self.resolves {
+//        r(value)
+//      }
+//      self.resolves = []
+//    }
+//
+//    self.nextCall()
+    
+    // v2
+    if state != 0 {
       return
     }
-    self.pending = false
-    
-    self.nextCall = {[unowned self] in
-      for r in self.resolves {
-        r(value)
-      }
-      self.resolves = []
-    }
+    self.state = 1
+    self.value = value
     
     self.nextCall()
   }
   
   private func doReject(_ err:Error)->Void {
-    if !self.pending {
+    // v1
+//    if !self.pending {
+//      return
+//    }
+//    self.pending = false
+//
+//    self.nextCall = {[unowned self] in
+//      for r in self.rejects {
+//        r(err)
+//      }
+//      self.rejects = []
+//    }
+//
+//    self.nextCall()
+    
+    // v2
+    if state != 0 {
       return
     }
-    self.pending = false
-    
-    self.nextCall = {[unowned self] in
-      for r in self.rejects {
-        r(err)
-      }
-      self.rejects = []
-    }
+    self.state = 2
+    self.error = err
     
     self.nextCall()
+  }
+  
+  // v2
+  private func nextCall() {
+    if state == 0 {
+      return
+    }
+    
+    if state == 1 {
+      for r in resolves {
+        r(value!)
+      }
+      resolves = []
+    }
+    
+    if state == 2 {
+      for r in rejects {
+        r(error!)
+      }
+      rejects = []
+    }
   }
   
   private var resolves:[(_ v:Value)->Void] = []
   private var rejects:[(_ err:Error)->Void] = []
   
-  private var nextCall = {()->Void in }
-  private var pending = true;
+  // v1
+//   private var nextCall = {()->Void in }
+//  private var pending = true;
+  
+  // v2
+  private var value:Value?
+  private var error:Error?
+  private var state:Int = 0
+  
 }
 
 // tuple all
