@@ -79,18 +79,16 @@ public class Promise<Value> {
   }
   
   @discardableResult
-  public func thenByThread<Next> (_ task:@escaping (Value, @escaping (Next)->Void
-    , @escaping (Error)->Void)throws->Void)->Promise<Next> {
+  public func thenByThread<Next> (_ task:@escaping (Value)throws->Next)->Promise<Next> {
 
     return self.then {(value, resolve, reject) in
       let thread = Thread();
-      thread.setRunner{
+      thread.setRunner{[unowned t = thread] in
         do {
-          try task(value, {next in thread.postBack{resolve(next)} }
-                   , {err in thread.postBack{reject(err)} }
-          );
+          let next = try task(value);
+          t.postBack{resolve(next)}
         } catch {
-          thread.postBack{reject(error)}
+          t.postBack{reject(error)}
         }
       }.start()
       
