@@ -147,8 +147,9 @@ class promiseTests: XCTestCase {
   }
   
   func testThenByThread() {
-    Promise.resolve("test").thenByThread( { (value: String, resolve, reject) in
-      resolve(value + "---then");
+		Promise.resolve("test").thenByThread( { (value: String, resolve:(String)->Void, reject) in
+			let ret = value + "---then"
+			resolve(ret);
     }).then { value -> Promise<Void> in
       XCTAssert(value == "test---then");
       self.expection?.fulfill();
@@ -157,6 +158,19 @@ class promiseTests: XCTestCase {
     
     self.waitForExpectations(timeout: 3, handler: nil);
   }
+	
+	func testThenByThread2() {
+		Promise.resolve("test").thenByThread( { (value: String) -> String in
+			let ret = value + "---then"
+			return ret
+		}).then { value -> Promise<Void> in
+			XCTAssert(value == "test---then");
+			self.expection?.fulfill();
+			return Promise<Void>.resolve();
+		}
+		
+		self.waitForExpectations(timeout: 3, handler: nil);
+	}
   
   func testAll() {
     let p1 = Promise.resolve("test1").then { (value: String) -> Promise<String> in
