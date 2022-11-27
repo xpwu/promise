@@ -6,7 +6,4 @@ typescript/.idea/typescript.iml
 typescript/.idea/vcs.xml
 typescript/.idea/workspace.xml
 typescript/dist
-iOS/Promise/Promise.xcodeproj/project.xcworkspace/xcuserdata/xpwu.xcuserdatad/UserInterfaceState.xcuserstate
-iOS/Promise/Promise.xcodeproj/project.xcworkspace/xcuserdata/xpwu.xcuserdatad/UserInterfaceState.xcuserstate
-iOS/Promise/Promise.xcworkspace/xcuserdata/xpwu.xcuserdatad/UserInterfaceState.xcuserstate
-iOS/Promise/Promise.xcworkspace/xcuserdata/xpwu.xcuserdatad/UserInterfaceState.xcuserstate
+*.xcuserstate
